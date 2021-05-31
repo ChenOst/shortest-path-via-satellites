@@ -1,24 +1,29 @@
 import networkx as nx
 from skyfield.api import EarthSatellite, N, W, wgs84, load
 from math import sin, cos, sqrt, atan2, radians
+import networkx as nx
+import matplotlib.pyplot as plt
 
 
-my_dict = {}
 satellites_results = []
+start_point = {}
+end_point = {}
 
 
 def main():
     ts = load.timescale()
     t = ts.now()
+    max_range = 1000;
+    g = nx.Graph()
 
-    #get_user_input()
+    get_user_input()
 
     starlink_url = 'http://www.celestrak.com/NORAD/elements/starlink.txt'
     satellites = load.tle_file(starlink_url)
-    print('Loaded', len(satellites), 'satellites')
 
+    # distance between ground and satellite
     for satellite in satellites:
-        # print(satellite) prints more info on the satellite
+        #print(satellite) #prints more info on the satellite
         if satellite.name != "FALCON 9 DEB": # We don't want to get info about FALCON 9
             # Geocentric
             geometry = satellite.at(t)
@@ -26,13 +31,41 @@ def main():
             subpoint = wgs84.subpoint(geometry)
             latitude = subpoint.latitude
             longitude = subpoint.longitude
-            satellites_results.append({"name": satellite.name, "latitude": latitude.degrees, "longitude": longitude.degrees})
-    print(satellites_results)
 
+            satellite_info = {"name": satellite.name, "latitude": latitude.degrees, "longitude": longitude.degrees}
+
+            dist1 = calculate_distance(start_point, satellite_info)
+            dist2 = calculate_distance(end_point, satellite_info)
+
+            if dist1 < max_range:
+                g.add_edge(start_point["name"], satellite_info["name"], weight=dist1)
+
+
+            if dist2 < max_range:
+                g.add_edge(end_point["name"], satellite_info["name"], weight=dist2)
+
+    #distance between two earth satellite
+    for i in range(0, len(satellites)):
+        for j in range(i+1, len(satellites)-1):
+            if satellites[i].name != "FALCON 9 DEB" and satellites[j].name != "FALCON 9 DEB":
+                distance = (satellites[i].at(t) - satellites[j].at(t)).distance().km
+                if distance < max_range:
+                    g.add_edge(satellites[i].name, satellites[j].name, weight=distance)
+
+    pos = nx.spring_layout(g)
+    nx.draw(g, pos, node_color='b', with_labels = True)
+    # draw path in red
+    path = nx.shortest_path(g, source="Start Point", target="End Point")
+    print(path)
+    # path_edges = zip(path, path[1:])
+    # nx.draw_networkx_nodes(g, pos, nodelist=path, node_color='r')
+    # nx.draw_networkx_edges(g, pos, edgelist=path_edges, edge_color='r', width=10)
+    # plt.axis('equal')
+    plt.show()
 
 def calculate_distance(point1, point2):
     # approximate radius of earth in km
-    R = 6373.0
+    R = 6373.388
 
     lat1 = radians(point1["latitude"])
     lon1 = radians(point1["longitude"])
@@ -47,21 +80,18 @@ def calculate_distance(point1, point2):
 
     distance = R * c
 
-    print("Result:", distance)
-    print("Should be:", 278.546, "km")
+    return distance
 
 
 def get_user_input():
     start_point_coordinates = input("Enter the start point coordinates: ")
     end_point_coordinates = input("Enter the end point coordinates: ")
+
     x = start_point_coordinates.split(', ')
     y = end_point_coordinates.split(', ')
-    # results.append(
-    #     {
-    #        {"name": "Start", "lat": float(x[0]), "lon": float(x[1])},
-    #        {"name": "End", "lat": float(y[0]), "lon": float(y[1])},
-    #     }
-    # )
+
+    start_point.update({"name": "Start Point", "latitude": float(x[0]), "longitude": float(x[1])})
+    end_point.update({"name": "End Point", "latitude": float(y[0]), "longitude": float(y[1])})
 
 
 if __name__ == "__main__":
