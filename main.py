@@ -1,4 +1,3 @@
-import networkx as nx
 from skyfield.api import EarthSatellite, N, W, wgs84, load
 from math import sin, cos, sqrt, atan2, radians
 import networkx as nx
@@ -13,7 +12,7 @@ end_point = {}
 def main():
     ts = load.timescale()
     t = ts.now()
-    max_range = 1000;
+    max_range = int(input("Enter the air distance in km: "))
     g = nx.Graph()
 
     get_user_input()
@@ -23,8 +22,8 @@ def main():
 
     # distance between ground and satellite
     for satellite in satellites:
-        #print(satellite) #prints more info on the satellite
-        if satellite.name != "FALCON 9 DEB": # We don't want to get info about FALCON 9
+        # print(satellite)  # prints more info on the satellite
+        if satellite.name != "FALCON 9 DEB":  # We don't want to get info about FALCON 9
             # Geocentric
             geometry = satellite.at(t)
             # Geographic point beneath satellite
@@ -40,11 +39,10 @@ def main():
             if dist1 < max_range:
                 g.add_edge(start_point["name"], satellite_info["name"], weight=dist1)
 
-
             if dist2 < max_range:
                 g.add_edge(end_point["name"], satellite_info["name"], weight=dist2)
 
-    #distance between two earth satellite
+    # distance between two earth satellite
     for i in range(0, len(satellites)):
         for j in range(i+1, len(satellites)-1):
             if satellites[i].name != "FALCON 9 DEB" and satellites[j].name != "FALCON 9 DEB":
@@ -53,15 +51,19 @@ def main():
                     g.add_edge(satellites[i].name, satellites[j].name, weight=distance)
 
     pos = nx.spring_layout(g)
-    nx.draw(g, pos, node_color='b', with_labels = True)
+
+    # This option can add satellites name into the graph
+    # nx.draw(g, pos, node_color='b', with_labels = True, font_size=10)
+    nx.draw(g, pos, node_color='b')
     # draw path in red
     path = nx.shortest_path(g, source="Start Point", target="End Point")
     print(path)
-    # path_edges = zip(path, path[1:])
-    # nx.draw_networkx_nodes(g, pos, nodelist=path, node_color='r')
-    # nx.draw_networkx_edges(g, pos, edgelist=path_edges, edge_color='r', width=10)
-    # plt.axis('equal')
+    path_edges = list(zip(path, path[1:]))
+    nx.draw_networkx_nodes(g, pos, nodelist=path, node_color='r', node_size=400)
+    nx.draw_networkx_edges(g, pos, edgelist=set(path_edges), edge_color='r', width=10)
+    plt.axis('equal')
     plt.show()
+
 
 def calculate_distance(point1, point2):
     # approximate radius of earth in km
