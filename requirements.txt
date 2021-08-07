@@ -11,5 +11,6 @@ pyparsing==2.4.7
 python-dateutil==2.8.1
 scipy==1.6.3
 sgp4==2.19
+simplekml==1.3.5
 six==1.15.0
 skyfield==1.39

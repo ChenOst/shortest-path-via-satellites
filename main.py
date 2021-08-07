@@ -2,6 +2,8 @@ from skyfield.api import EarthSatellite, N, W, wgs84, load
 from math import sin, cos, sqrt, atan2, radians
 import networkx as nx
 import matplotlib.pyplot as plt
+import warnings
+import simplekml
 
 
 satellites_results = []
@@ -10,10 +12,14 @@ end_point = {}
 
 
 def main():
+    # Starlink data can be corrupted, let double_scalar warnings go unnoticed
+    warnings.filterwarnings("ignore")
     ts = load.timescale()
     t = ts.now()
     max_range = int(input("Enter the air distance in km: "))
     g = nx.Graph()
+    kml = simplekml.Kml()
+    kml_entries = []
 
     get_user_input()
 
@@ -32,6 +38,7 @@ def main():
             longitude = subpoint.longitude
 
             satellite_info = {"name": satellite.name, "latitude": latitude.degrees, "longitude": longitude.degrees}
+            kml_entries.append(satellite_info)
 
             dist1 = calculate_distance(start_point, satellite_info)
             dist2 = calculate_distance(end_point, satellite_info)
@@ -58,6 +65,17 @@ def main():
     # draw path in red
     path = nx.shortest_path(g, source="Start Point", target="End Point")
     print(path)
+
+    # Generate KML for Google Earth
+    kml_coords = []
+    kml_coords.append((start_point["longitude"], start_point["latitude"]))
+    for point in path[1:-1]:
+        kml_entry = get_kml_entry(satellite_name=point, kml_entries=kml_entries)
+        kml_coords.append((kml_entry["longitude"], kml_entry["latitude"]))
+    kml_coords.append((end_point["longitude"], end_point["latitude"]))
+    kml.newlinestring(name="Path", description="Shortest path via satellites", coords=kml_coords)
+    kml.save('google_earth_data.kml')
+
     path_edges = list(zip(path, path[1:]))
     nx.draw_networkx_nodes(g, pos, nodelist=path, node_color='r', node_size=400)
     nx.draw_networkx_edges(g, pos, edgelist=set(path_edges), edge_color='r', width=10)
@@ -95,6 +113,11 @@ def get_user_input():
     start_point.update({"name": "Start Point", "latitude": float(x[0]), "longitude": float(x[1])})
     end_point.update({"name": "End Point", "latitude": float(y[0]), "longitude": float(y[1])})
 
+
+def get_kml_entry(satellite_name, kml_entries):
+    for entry in kml_entries:
+        if entry["name"] == satellite_name:
+            return entry
 
 if __name__ == "__main__":
     main()
